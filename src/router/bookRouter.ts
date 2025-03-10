@@ -1,5 +1,6 @@
 import { Router } from "express";
 import createDebug from 'debug';
+import { Role } from '@prisma/client';
 import { BooksController } from "../controllers/books.controller.js";
 import { AuthInterceptor } from "../middleware/auth.interceptor.js";
 
@@ -17,12 +18,14 @@ export const createBooksRouter = (
     booksRouter.post(
         '/create',
         authInterceptor.authenticate,
+        authInterceptor.hasRole(Role.admin),
         booksController.create,
     );
     booksRouter.patch('/:id',authInterceptor.authenticate, booksController.update);
     booksRouter.delete(
         '/:id',
         authInterceptor.authenticate,
+        authInterceptor.hasRole(Role.admin),
         booksController.delete,
     );
     return booksRouter;

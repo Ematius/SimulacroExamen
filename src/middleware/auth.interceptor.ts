@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import { HttpError } from '../types/http-error.js';
 import createDebug from 'debug';
 import { AuthService } from '../services/auth.services.js';
+import { Role } from '@prisma/client';
 
 
 
@@ -40,6 +41,21 @@ export class AuthInterceptor {
         }
     };
 
+    hasRole =
+        (role: Role) => (req: Request, _res: Response, next: NextFunction) => {
+            if (
+                !req.user ||
+                (req.user.role !== role && req.user.role !== Role.admin)
+            ) {
+                const newError = new HttpError(
+                    'You do not have permission',
+                    403,
+                    'Forbidden',
+                );
+                next(newError);
+                return;
+            }
 
-    
+            next();
+        };
 }

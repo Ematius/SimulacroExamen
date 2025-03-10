@@ -1,5 +1,7 @@
 # Pasos para el Examen
 
+A mi me ha funcionado perfectamente, muchos errores que he tenido eran por el manejo de postman, el coger el token pegarlo donde es, mandar bien en el body lo que pedía etc...
+
 configurar el package.json, copiar y pegar seguro que nos deja ya que no estará encima viendo que hacemos
 
 1️⃣Configurar el entorno de trabajo, estructura de carpetas y el package.json
@@ -1469,3 +1471,107 @@ export const createReviewsRouter = (
    app.use('/api/reviews', reviewsRouter);
 
 ```
+
+## Jerarquía de roles
+
+Los roles se establecerá con AuthInterceptor que es quien intercepta pero los cimientos donde empieza todo es en la base de datos que ahí se archiva quien tiene un rol u otro, así que lo primero es prisma, ya que rol es un atributo que hay que añadir a la tabla.
+
+```prisma
+
+model User {
+  id        String   @id @default(uuid()) @map("user_id")
+  name      String
+  email     String   @unique
+  password  String
+  role      Role   @default(user)
+  createdAt DateTime @default(now()) @ignore
+  updatedAt DateTime @updatedAt @ignore
+  reviews   Review[]
+
+    @@index([email])
+    @@map("users")
+}
+enum Role {
+  user
+  admin
+}
+
+```
+
+y un npx prisma migrate dev
+
+Una vez hecho hay que incluir el rol en el payload ya que si no de lo contrario el token que nos devolverá al logearnos no incluirá el rol, solamente sera un token con el contenido de email y id, así asi que hay que ir a auth.services y añadirlo y quedaría así.
+
+```ts
+archivo auth.services
+
+export interface Payload extends JwtPayload {
+    id: string;
+    email: string;
+    role:string;
+}
+```
+
+una vez incluido esto hay que indicar que cuando te haces login lo envié asi que hay que ir a quien lo envía los res, los middleware que son los únicos que pueden y entonces ese es el user.controller en la función login, en donde se configura el token hay que añadir  **role: userWithoutPasswd.role**
+quería algo asi en la función login en user.controller.ts
+
+```ts
+
+            const token = await AuthService.generateToken({
+                id: userWithoutPasswd.id,
+                email: userWithoutPasswd.email,
+                role: userWithoutPasswd.role,
+            });
+ 
+```
+
+y después de todos estos preparativos ya podemos ir a auth.interceptor.ts para añadir la función a nuestra class AuthInterceptor
+
+```ts
+import { Role } from '@prisma/client';
+
+hasRole =
+        (role: Role) => (req: Request, _res: Response, next: NextFunction) => {
+            if (
+                !req.user ||
+                (req.user.role !== role && req.user.role !== Role.admin)
+            ) {
+                const newError = new HttpError(
+                    'You do not have permission',
+                    403,
+                    'Forbidden',
+                );
+                next(newError);
+                return;
+            }
+
+            next();
+        };
+
+```
+
+y ya por fin lo ultimo que seria ir al router e imponer la regla yo he escogido create y delete como únicas rutas que solo puede acceder siendo admin
+
+```ts
+archivo book.Router
+
+    booksRouter.post(
+        '/create',
+        authInterceptor.authenticate,
+        authInterceptor.hasRole(Role.admin),
+        booksController.create,
+    );
+
+    booksRouter.delete(
+        '/:id',
+        authInterceptor.authenticate,
+        authInterceptor.hasRole(Role.admin),
+        booksController.delete,
+    );
+
+```
+
+y ya con esto creo que hemos visto todo lo que es un server, al menos lo mínimo, esto se puede complicar más pero hasta aquí hemos llegado.
+
+En clase hemos hecho tablas relacionales pero eso no me dará tiempo a añadirlo porque ya pasamos a Angular
+

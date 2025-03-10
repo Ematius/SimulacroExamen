@@ -1,6 +1,7 @@
 import { HttpError } from '../types/http-error.js';
 import createDebug from 'debug';
 import { AuthService } from '../services/auth.services.js';
+import { Role } from '@prisma/client';
 const debug = createDebug('library:interceptor:auth');
 export class AuthInterceptor {
     constructor() {
@@ -24,5 +25,14 @@ export class AuthInterceptor {
             const newError = new HttpError(err.message, 401, 'Unauthorized');
             next(newError);
         }
+    };
+    hasRole = (role) => (req, _res, next) => {
+        if (!req.user ||
+            (req.user.role !== role && req.user.role !== Role.admin)) {
+            const newError = new HttpError('You do not have permission', 403, 'Forbidden');
+            next(newError);
+            return;
+        }
+        next();
     };
 }
