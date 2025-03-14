@@ -72,6 +72,7 @@ library/
 ### **Primero** es crear el archivo app.js
 
 ```js
+
 Archivo app.ts
 
 import express from 'express';
@@ -112,39 +113,7 @@ export const createApp = () => {
 
 ```
 
-### **Segundo** index.ts
-
-```js
-
-import { createServer } from 'node:http';
-import createDebug from 'debug';
-import { listenManager } from './server/listen-manager.js';
-import { errorManager } from './server/error-manager.js';
-import { createApp } from './app.js';
-
-const debug = createDebug('library:server');
-debug('Iniciando servidor...');
-const PORT = process.env.PORT || 3000;
-
-try {
-    const server = createServer(createApp());
-    server.listen(PORT);
-    server.on('listening', () => listenManager(server));
-    server.on('error', errorManager);
-} catch (err) {
-    console.error('Server Error:', err);
-    process.exit(1);
-}
-
-Ahora debemos crear listenerManager y errorManager para tener el mínimo para que el server pueda escuchar un puerto, gestionar un mínimo de error durante la conexión
-
-```
-
-### **Tercero**
-
- │   ├── server/
-          ├── error-manager.ts
-          ├── listen-manager.ts
+### **Segundo** listener-manager.ts
 
 ```js
 listen-manager
@@ -172,15 +141,18 @@ export const listenManager = (server: Server) => {
     }
 };
 
+
 ```
 
-### **cuarto**
+### **Tercero**
+
+ │   ├── server/
+          ├── error-manager.ts
+          ├── listen-manager.ts
 
 ```js
 
-error-manager
-
-Se quejara de HttpError
+error-manager.ts
 
 import type { ServerResponse } from 'node:http';
 import { HttpError } from '../types/http-error.js'; //necesitamos hacer el tipado
@@ -212,7 +184,7 @@ export const errorManager = (
 
 ```
 
-### **quinto**
+### **cuarto**
 
 nueva carpeta
   ├── types/
@@ -229,6 +201,33 @@ export class HttpError extends Error {
         super(message);
         this.name = 'HttpError';
     }
+}
+
+
+```
+
+### **quinto**
+
+```js
+
+import { createServer } from 'node:http';
+import createDebug from 'debug';
+import { listenManager } from './server/listen-manager.js';
+import { errorManager } from './server/error-manager.js';
+import { createApp } from './app.js';
+
+const debug = createDebug('library:server');
+debug('Iniciando servidor...');
+const PORT = process.env.PORT || 3000;
+
+try {
+    const server = createServer(createApp());
+    server.listen(PORT);
+    server.on('listening', () => listenManager(server));
+    server.on('error', errorManager);
+} catch (err) {
+    console.error('Server Error:', err);
+    process.exit(1);
 }
 
 
